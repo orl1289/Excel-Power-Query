@@ -15,7 +15,7 @@ let
     #"Capital Month&Day" = Table.TransformColumns(#"Inserted Day Name",{{"Month Name", Text.Proper, type text}, {"Day Name", Text.Proper, type text}}),
     #"Day of Month" = Table.AddColumn(#"Capital Month&Day", "Day of Month", each Date.Day([Date])),
     #"Inserted Day of Week" = Table.AddColumn(#"Day of Month", "Day Order", each Date.DayOfWeek([Date], Day.Monday)),
-    #"Personalizada agregada1" = Table.AddColumn(#"Inserted Day of Week", "Year-Month", each Date.ToText([Date],"yyyy-MM"))
+    #"Year-Month" = Table.AddColumn(#"Inserted Day of Week", "Year-Month", each Date.ToText([Date],"yyyy-MM"))
 /*First day is Monday*/
 in
-    #"Personalizada agregada1"
+    #"Year-Month"
