@@ -1,0 +1,21 @@
+let
+    StartDate = #date(2026, 1, 1),
+    EndDate = #date(2027, 1, 1),
+    #"add dates until today" = List.Dates(StartDate, Duration.Days(EndDate-StartDate), #duration(1,0,0,0)),
+    #"Converted to Table" = Table.FromList(#"add dates until today", Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Renamed Column Date" = Table.RenameColumns(#"Converted to Table",{{"Column1", "Date"}}),
+    #"Changed Type of Column Date" = Table.TransformColumnTypes(#"Renamed Column Date",{{"Date", type date}}),
+    #"Personalizada agregada" = Table.AddColumn(#"Changed Type of Column Date", "DateKey", each Date.ToText([Date],"yyyyMMdd")),
+    #"Inserted Year" = Table.AddColumn(#"Personalizada agregada", "Year", each Date.Year([Date]), Int64.Type),
+    #"Inserted Quarter" = Table.AddColumn(#"Inserted Year", "Quarter", each "Q"&Number.ToText(Date.QuarterOfYear([Date]))),
+    #"Inserted Month Order" = Table.AddColumn(#"Inserted Quarter", "Month Order", each Date.Month([Date]), Int64.Type),
+    #"Inserted Month Name" = Table.AddColumn(#"Inserted Month Order", "Month Name", each Date.MonthName([Date]), type text),
+    #"Inserted Week" = Table.AddColumn(#"Inserted Month Name", "Insert Week", each Date.WeekOfYear([Date])),
+    #"Inserted Day Name" = Table.AddColumn(#"Inserted Week", "Day Name", each Date.DayOfWeekName([Date]), type text),
+    #"Capital Month&Day" = Table.TransformColumns(#"Inserted Day Name",{{"Month Name", Text.Proper, type text}, {"Day Name", Text.Proper, type text}}),
+    #"Day of Month" = Table.AddColumn(#"Capital Month&Day", "Day of Month", each Date.Day([Date])),
+    #"Inserted Day of Week" = Table.AddColumn(#"Day of Month", "Day Order", each Date.DayOfWeek([Date], Day.Monday)),
+    #"Personalizada agregada1" = Table.AddColumn(#"Inserted Day of Week", "Year-Month", each Date.ToText([Date],"yyyy-MM"))
+/*First day is Monday*/
+in
+    #"Personalizada agregada1"
