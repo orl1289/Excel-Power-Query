@@ -1,0 +1,85 @@
+= (texto as nullable text) as nullable datetime =>
+let
+    t = if texto = null then "" else Text.Trim(texto),
+    esDigitos = t <> "" and List.AllTrue(List.Transform(Text.ToList(t), each List.Contains({"0".."9"}, _))),
+    longitud = Text.Length(t),
+
+    resultado =
+        if t = "" then null
+
+        // YYYYMMDD -- 8 digitos seguidos, sin separadores
+        else if esDigitos and longitud = 8 then
+            #datetime(Number.From(Text.Start(t,4)), Number.From(Text.Middle(t,4,2)), Number.From(Text.End(t,2)), 0,0,0)
+
+        // Timestamp Unix en segundos -- 9 a 10 digitos
+        else if esDigitos and longitud >= 9 and longitud <= 10 then
+            #datetime(1970,1,1,0,0,0) + #duration(0,0,0, Number.From(t))
+
+        // Numero de serie de Excel guardado como texto -- 1 a 5 digitos
+        else if esDigitos and longitud <= 5 then
+            DateTime.From(Date.From(Number.From(t)))
+
+        // ISO datetime con "T": 2026-03-15T14:30:00
+        else if Text.Contains(t, "T") and longitud = 19 then
+            DateTime.FromText(Text.Replace(t, "T", " "))
+
+        // Datetime con espacio: 2026-03-15 14:30:00
+        else if longitud = 19 and Text.Contains(t, "-") and Text.Contains(t, ":") then
+            DateTime.FromText(t)
+
+        // DD-MMM-YY o DD-MMM-YYYY, ej. 15-Mar-26 / 15-Mar-2026
+        else if Text.Contains(t, "-") and List.Contains(
+                {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},
+                Text.Middle(t, Text.PositionOf(t,"-") + 1, 3)) then
+            DateTime.From(Date.FromText(t, "en-US"))
+
+        // Formatos con "/"
+        else if Text.Contains(t, "/") then
+            let
+                partes = Text.Split(t, "/"),
+                p0 = partes{0}, p1 = partes{1}, p2 = partes{2}
+            in
+                if Text.Length(p0) = 4 then
+                    // YYYY/MM/DD
+                    DateTime.From(#date(Number.From(p0), Number.From(p1), Number.From(p2)))
+                else if Text.Length(p2) = 4 then
+                    // DD/MM/YYYY -- cambia "en-GB" por "en-US" si tus datos son MM/DD/YYYY
+                    DateTime.From(Date.FromText(t, "en-GB"))
+                else
+                    // ano de 2 digitos: DD/MM/YY
+                    let
+                        a2 = Number.From(p2),
+                        anio = if a2 < 30 then 2000 + a2 else 1900 + a2
+                    in
+                        DateTime.From(#date(anio, Number.From(p1), Number.From(p0)))
+
+        // Formatos con "."
+        else if Text.Contains(t, ".") then
+            let
+                partes = Text.Split(t, "."),
+                p0 = partes{0}, p2 = partes{2}
+            in
+                if Text.Length(p0) = 4 then
+                    DateTime.From(#date(Number.From(p0), Number.From(partes{1}), Number.From(p2)))
+                else
+                    DateTime.From(#date(Number.From(p2), Number.From(partes{1}), Number.From(p0)))
+
+        // DD-MM-YYYY o YYYY-MM-DD -- guiones, todo numerico
+        else if Text.Contains(t, "-") then
+            let
+                partes = Text.Split(t, "-"),
+                p0 = partes{0}, p2 = partes{2}
+            in
+                if Text.Length(p0) = 4 then
+                    DateTime.From(#date(Number.From(p0), Number.From(partes{1}), Number.From(p2)))
+                else
+                    DateTime.From(#date(Number.From(p2), Number.From(partes{1}), Number.From(p0)))
+
+        // "Month DD, YYYY" -- con coma
+        else if Text.Contains(t, ",") then
+            DateTime.From(Date.FromText(t, "en-US"))
+
+        else
+            null
+in
+    resultado
